@@ -1,4 +1,4 @@
-# Example application using a LoRa module, using `asimple`
+# Redboard Artemis writing to Flash memory, using `asimple`
 
 This is an example application using the asimple and forked AmbiqSuiteSDK
 projects to read time from the RTC and read/write/erase from the flash chip.
