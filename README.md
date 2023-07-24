@@ -3,6 +3,16 @@
 This is an example application using the asimple and forked AmbiqSuiteSDK
 projects to read time from the RTC and read/write/erase from the flash chip.
 
+### Flash Pins
+- 1 - CS
+- 2 - SDO
+- 3 -
+- 4 - GND
+- 5 - SDI
+- 6 - SCK
+- 7 - 
+- 8 - VCC
+
 ## Dependencies
  - https://github.com/gemarcano/AmbiqSuiteSDK
  - https://github.com/gemarcano/asimple
