@@ -82,31 +82,30 @@ int main(void)
 		am_util_delay_ms(10);
 	}
 	am_util_stdio_printf("\r\n");
-	am_util_delay_ms(250);
 
 	// print the flash ID to make sure the CS is connected correctly
 	am_util_stdio_printf("flash ID: %02X\r\n", flash_read_id(&flash));
 
 	// print the RTC ID to make sure the CS is connected correctly
 	spi_chip_select(&spi, SPI_CS_3);
-	am_util_delay_ms(250);
 	am_util_stdio_printf("RTC ID: %02X\r\n", am1815_read_register(&rtc, 0x28));
 
+	// print the flash ID to make sure the CS is connected coorrectly
+	spi_chip_select(&spi, SPI_CS_0);
+	am_util_stdio_printf("flash ID: %02X\r\n", flash_read_id(&flash));
+
 	// write the RTC time to the flash chip
+	spi_chip_select(&spi, SPI_CS_3);
 	struct timeval time = am1815_read_time(&rtc);
 	// print the seconds from the RTC to make sure the time is correct
 	am_util_stdio_printf("secs: %lld\r\n", time.tv_sec);
 	uint64_t sec = (uint64_t)time.tv_sec;
 	uint8_t* tmp = (uint8_t*)&sec;
 	spi_chip_select(&spi, SPI_CS_0);
-	am_util_delay_ms(250);
-
-	// print the flash ID to make sure the CS is connected coorrectly
-	am_util_stdio_printf("flash ID: %02X\r\n", flash_read_id(&flash));
 	flash_page_program(&flash, 0x05, tmp, 8);
+	flash_wait_busy(&flash);
 
 	// print flash data after write
-	am_util_delay_ms(1000);
 	flash_read_data(&flash, 0x04, buffer, size);
 	buf = buffer;
 	am_util_stdio_printf("after write:\r\n");
@@ -122,11 +121,10 @@ int main(void)
 	am_util_stdio_printf("writtenSecs: %lld\r\n", writtenSecs);
 
 	// erase data
-	am_util_delay_ms(250);
 	flash_sector_erase(&flash, 0x05);
+	flash_wait_busy(&flash);
 
 	// print flash data after write
-	am_util_delay_ms(1000);
 	flash_read_data(&flash, 0x04, buffer, size);
 	buf = buffer;
 	am_util_stdio_printf("after erase:\r\n");
