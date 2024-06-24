@@ -9,7 +9,7 @@ project('rba_lora', 'c',
   version: '0.1.0')
 
 c_args = [
-  '-ffunction-sections',
+  '-ffunction-sections', '-mno-unaligned-access'
 ]
 
 link_args = [

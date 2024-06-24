@@ -25,12 +25,14 @@
 #include <uart.h>
 #include <flash.h>
 #include <am1815.h>
+#include <syscalls.h>
 
 /*
 * Inializing the MCU and UART are the only things kept from the original file
 */
-static struct uart uart;
-static struct spi spi;
+static struct uart *uart;
+static struct spi_bus *spi_bus;
+static struct spi_device *flash_spi;
 static struct flash flash;
 static struct am1815 rtc;
 
@@ -45,29 +47,25 @@ int main(void)
 	am_hal_sysctrl_fpu_stacking_enable(true);
 
 	// Init UART, registers with SDK printf
-	uart_init(&uart, UART_INST0);
+	uart = uart_get_instance(UART_INST0);
+	syscalls_uart_init(uart);
 
 	am_hal_interrupt_master_enable();
 
 	// Print the banner.
-	am_util_stdio_terminal_clear();
-	am_util_stdio_printf("Hello World!\r\n\r\n");
+	printf("Hello World!\r\n\r\n");
 
 	// Initialize spi and select the CS channel
-	spi_init(&spi, 0, 2000000u);
-	spi_enable(&spi);
+	spi_bus = spi_bus_get_instance(SPI_BUS_0);
+	spi_bus_enable(spi_bus);
+	flash_spi = spi_device_get_instance(spi_bus, SPI_CS_2, 2000000u);
 
 	// Initialize flash
-	flash_init(&flash, &spi);
-
-	// Initalize RTC
-	am1815_init(&rtc, &spi);
-
-	spi_chip_select(&spi, SPI_CS_0);
+	flash_init(&flash, flash_spi);
 
 	// Test flash functions
 	int size = 15;
-	uint8_t buffer[size];		// this is 4x bigger than necessary
+	char buffer[size];		// this is 4x bigger than necessary
 	// initialize buffer to all -1 (shouldn't be necessary to do this)
 	for (int i = 0; i < size; i++) {
 		buffer[i] = -1;
@@ -76,49 +74,34 @@ int main(void)
 	// print the data before write
 	flash_read_data(&flash, 0x04, buffer, size);
 	char* buf = buffer;
-	am_util_stdio_printf("before write:\r\n");
+	printf("before write:\r\n");
 	for (int i = 0; i < size; i++) {
 		am_util_stdio_printf("%02X ", (int) buf[i]);
 		am_util_delay_ms(10);
 	}
-	am_util_stdio_printf("\r\n");
+	printf("\r\n");
 
 	// print the flash ID to make sure the CS is connected correctly
-	am_util_stdio_printf("flash ID: %02X\r\n", flash_read_id(&flash));
-
-	// print the RTC ID to make sure the CS is connected correctly
-	spi_chip_select(&spi, SPI_CS_3);
-	am_util_stdio_printf("RTC ID: %02X\r\n", am1815_read_register(&rtc, 0x28));
+	printf("flash ID: %02X\r\n", flash_read_id(&flash));
 
 	// print the flash ID to make sure the CS is connected coorrectly
-	spi_chip_select(&spi, SPI_CS_0);
-	am_util_stdio_printf("flash ID: %02X\r\n", flash_read_id(&flash));
+	printf("flash ID: %02X\r\n", flash_read_id(&flash));
 
 	// write the RTC time to the flash chip
-	spi_chip_select(&spi, SPI_CS_3);
-	struct timeval time = am1815_read_time(&rtc);
 	// print the seconds from the RTC to make sure the time is correct
-	am_util_stdio_printf("secs: %lld\r\n", time.tv_sec);
-	uint64_t sec = (uint64_t)time.tv_sec;
-	uint8_t* tmp = (uint8_t*)&sec;
-	spi_chip_select(&spi, SPI_CS_0);
+	uint8_t tmp[8] = {0, 1, 2, 3, 5, 6, 7, 8};
 	flash_page_program(&flash, 0x05, tmp, 8);
 	flash_wait_busy(&flash);
 
 	// print flash data after write
 	flash_read_data(&flash, 0x04, buffer, size);
 	buf = buffer;
-	am_util_stdio_printf("after write:\r\n");
+	printf("after write:\r\n");
 	for (int i = 0; i < size; i++) {
-		am_util_stdio_printf("%02X ", (int) buf[i]);
+		printf("%02X ", (int) buf[i]);
 		am_util_delay_ms(10);
 	}
-	am_util_stdio_printf("\r\n");
-
-	// print the seconds again to make sure we are reading correctly
-	uint64_t writtenSecs = 0;
-	memcpy(&writtenSecs, buffer+1, 8);
-	am_util_stdio_printf("writtenSecs: %lld\r\n", writtenSecs);
+	printf("\r\n");
 
 	// erase data
 	flash_sector_erase(&flash, 0x05);
@@ -127,11 +110,11 @@ int main(void)
 	// print flash data after write
 	flash_read_data(&flash, 0x04, buffer, size);
 	buf = buffer;
-	am_util_stdio_printf("after erase:\r\n");
+	printf("after erase:\r\n");
 	for (int i = 0; i < size; i++) {
-		am_util_stdio_printf("%02X ", (int) buf[i]);
+		printf("%02X ", (int) buf[i]);
 		am_util_delay_ms(10);
 	}
-	am_util_stdio_printf("\r\n");
-	am_util_stdio_printf("done\r\n");
+	printf("\r\n");
+	printf("done\r\n");
 }
